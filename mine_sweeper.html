@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab" rel="stylesheet">
+    <title>Minesweeper</title>
+    <style>
+        body {
+            background-color: rgb(36, 36, 36);
+            font-family: 'Roboto Slab', serif;
+            padding: 1em;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            margin-top: 2em;
+        }
+
+        td {
+            border: 2px solid black;
+            width: 1.5em;
+            height: 1.5em;
+            text-align: center;
+            font-size: 1em;
+            font-weight: bold;
+            background-color: white;
+        }
+        h2, p{
+            color: white;
+        }
+
+        #controlBoard {
+            width: 80%;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+
+        #leaderBoard h2 {
+            text-align: center;
+        }
+
+        #userList {
+            color: white;
+            width: 20%;
+            margin: 0 auto;
+            justify-self: center;
+            /* background-color: tomato; */
+        }
+
+        #userList li{
+            list-style-type: None;
+            text-align: left;
+        }
+
+        #userInfo p {
+            display: inline;
+            margin-right: 1em;
+        }
+
+        #name {
+            color: tomato;
+        }
+
+        #leaderBoard {
+            display: none;
+        }
+
+        @media screen and (max-width: 550px) {
+            td {
+                font-size: .8em;
+            }
+            #userInfo p {
+                display: block;
+            }
+            #userList {
+                width: 60%;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/5.5.9/firebase.js"></script>
+    <script>
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyBIEAS9neRAqqBRaDWMxOTan8xg39uHdI4",
+        authDomain: "jijuntay-minesweeper.firebaseapp.com",
+        databaseURL: "https://jijuntay-minesweeper.firebaseio.com",
+        projectId: "jijuntay-minesweeper",
+        storageBucket: "jijuntay-minesweeper.appspot.com",
+        messagingSenderId: "241672098695"
+      };
+      firebase.initializeApp(config);
+    </script>    
+</head>
+<body oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
+    <div id="controlBoard">
+        <h2>Minesweeper</h2>
+        <p id="numOfBombs"></p>
+        <p id="numOfFlags">Falgs remaining: 40</p>
+        <div id="userInfo">
+            <p id="userName"><span>Name: </span><span id="name"></span></p>
+            <p id="userScore"><span>Score: </span><span id="score">0</span></p>
+        </div>
+        <p id="timer">0 : 0</p>
+        <div id="leaderBoard">
+            <h2>Leader Board</h2>
+            <ul id="userList">
+                <li></li>
+            </ul>
+        </div>
+    </div>
+    <table id="board"></table>
+    <script>
+        myBoard = []
+
+        function createBoard(width, height, numOfBombs) {
+            let board = document.getElementById('board')
+            let i = 0;
+            let choices = [];
+            for (let y = 0; y < height; y++) {
+                let row = document.createElement('tr');
+                board.appendChild(row)
+                let rowArray = []
+                for (let x = 0; x < width; x++) {
+                    choices.push([y, x]);
+                    rowArray[x] = 0;
+                    let col = document.createElement('td');
+                    row.appendChild(col);
+                    col.id = y.toString() + " " +x.toString();
+                    col.class = "cols";
+                    col.innerHTML = " ";
+                    col.onmousedown = mark(col);
+                    i++;
+                }
+                myBoard[y] = rowArray;
+            }
+
+            for (let i = 0; i < numOfBombs; i++) {
+                let index = Math.floor(Math.random() * choices.length)
+                choice = choices[index];
+                choices.splice(index, 1);
+                myBoard[choice[0]][choice[1]] = 1;
+            }
+        }
+
+        function revealBoard(width, height) {
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    reveal2(x, y);
+                }
+            }
+        }
+
+
+        function reveal(x, y) {
+            let neighborCount = countNeighborCells(x, y);
+            let cell = document.getElementById(y + " " + x);
+            if ("cols revealed" == cell.class) {
+                console.log("already revealed");
+                return
+            }
+            if ("cols flag" == cell.class) {
+                cell.class = "clols revealed";
+                cell.innerHTML = " ";
+            }
+            cell.class = "cols revealed";
+            if (neighborCount > 0) {
+                cell.innerHTML = neighborCount;
+                cell.style.backgroundColor = "rgb(150, 150, 150)";
+                increaseScore()
+            } else if (neighborCount == 0) {
+                cell.innerHTML == " "
+                cell.style.backgroundColor = "rgb(150, 150, 150)";
+                revealAdjacent(x, y);
+            } else {
+                cell.innerHTML = "X";
+                cell.style.backgroundColor = "tomato";
+            }
+        }
+        function reveal2(x, y) {
+            let neighborCount = countNeighborCells(x, y);
+            let cell = document.getElementById(y + " " + x);
+            if ("cols revealed" == cell.class) {
+                console.log("already revealed");
+                return
+            }
+            //cell.class = "cols revealed";
+            if (neighborCount > 0) {
+                cell.innerHTML = neighborCount;
+                cell.style.backgroundColor = "rgb(100, 100, 100)";
+            } else if (neighborCount == 0) {
+                cell.innerHTML == " "
+                cell.style.backgroundColor = "rgb(100, 100, 100)";
+                //revealAdjacent(x, y);
+            } else {
+                cell.innerHTML = "X";
+                cell.style.backgroundColor = "red";
+            }
+        }
+
+        function revealAdjacent(x, y) {
+            for (let yOffset = -1; yOffset <= 1; yOffset++) {
+                for (let xOffset = -1; xOffset <= 1; xOffset ++) {
+                    let i = yOffset + y;
+                    let j = xOffset + x;
+                    if (j > -1 && j < w && i > -1 && i < h) {
+                        if (myBoard[i][j] == 0 && document.getElementById(i + " " + j).class != "cols revealed") {
+                            reveal(j, i);
+                            //document.getElementById(i + " " + j).style.backgroundColor = "white";
+                        }   
+                    }
+                }
+            }
+        }
+        
+        function mark(col) {
+            return function () {
+                if (isGameEnded) {
+                    return
+                } else if (event.button == 2 && col.class == "cols" && numOfFlags > 0) {
+                    col.innerHTML = "F";
+                    col.style.backgroundColor = "rgb(255, 208, 0)";
+                    col.class = "cols flag";
+                    numOfFlags--;
+                    document.getElementById("numOfFlags").innerHTML = "Flags remaining: " + numOfFlags;
+
+                } else if (event.button == 2 && col.class == "cols flag") {
+                    col.innerHTML = " ";
+                    col.style.backgroundColor = "white";
+                    col.class = "cols"
+                    numOfFlags++;
+                    document.getElementById("numOfFlags").innerHTML = "Flags remaining: " + numOfFlags;
+                } else if (col.class == "cols"){
+                    console.log("!");
+                    let xy = col.id.split(" ");
+                    let y = parseInt(xy[0]);
+                    let x = parseInt(xy[1]);
+                    reveal(x, y);
+                    if (myBoard[y][x] == 1) {
+                        endGame();
+                    }
+                }
+            }
+        }
+        function countNeighborCells(x, y) {
+            x = parseInt(x);
+            y = parseInt(y);
+            count = 0;
+
+            if (myBoard[y][x] == 1) {
+                return -1;
+            }
+
+            for (i = -1; i <= 1; i++) {
+                for (k = -1; k <= 1; k++) {
+                    if (y+i > -1 && y+i < h) {
+                        neighborCell = myBoard[y+i][x+k];
+                        if (neighborCell == 1) {
+                            count++
+                        }
+                    }
+                }
+            }
+            return count;
+        }
+
+        function endGame() {
+            isGameEnded = true;
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (myBoard[y][x] == 1) {
+                        // setTimeout(reveal(x, y), 200);
+                        reveal(x, y);
+                    }
+                }
+            }
+            saveUser(playerName, score);
+            setTimeout(function() {
+                showLeaderBoad();
+                hideBoard();
+            }, 1500);
+        }
+
+        function showLeaderBoad() {
+            retrieveUsers();
+            document.getElementById('leaderBoard').style.display = 'block';
+        }
+        function hideBoard() {
+            document.getElementById('board').style.display = 'none';
+        }
+
+        function askUserName() {
+            userName = prompt('What is your name?')
+            document.getElementById('name').innerHTML = userName;
+            return userName;
+        }
+
+        function increaseScore() {
+            score ++;
+            document.getElementById('score').innerHTML = score;
+        }
+
+        function timer() {
+            if (!isGameEnded) {
+                second++;
+                if (second == 60) {
+                    second = 0;
+                    minute++;
+                }
+                document.getElementById('timer').innerHTML = minute + " : " + second;
+            }
+        }
+
+        function saveUser(userName, score) {
+            if (userName == null) {
+                return;
+            }
+
+            userDatabase = firebase.database().ref().child('Users');
+            userDatabase.update({
+                [userName] : score
+            });
+        }
+
+        function retrieveUsers() {
+            userDatabase = firebase.database().ref().child('Users');
+            userDatabase.on("value", function(snapshot) {
+                usersInfo = snapshot.val();
+                Object.keys(usersInfo).forEach(function(key) {
+                    userLi = document.createElement('li');
+                    userLi.innerHTML = key + ": " + usersInfo[key]
+                    document.getElementById('userList').appendChild(userLi);
+                });
+            });
+        }
+        let  w = 15;
+        let h = 15;
+        let num = 40;
+        let score = 0;
+        let isGameEnded = false;
+        let numOfFlags = num;
+        let second = 0;
+        let minute = 0;
+        let playerName = askUserName();
+
+        
+        //endGame();
+        // saveUser(playerName, score);
+        // etrieveUsers();
+        createBoard(w, h, num);
+        setInterval(timer, 1000);
+        //revealBoard(w, h);
+        //endGame();
+        // let index = Math.floor(Math.random() * myBoard.length);
+        // while (true) {
+        //     let indexY = Math.floor(Math.random() * myBoard.length);
+        //     let indexX = Math.floor(Math.random() * myBoard[0].length);
+        //     if (countNeighborCells(indexX, indexY) == 0) {
+        //         reveal(indexX, indexY);
+        //         break;
+        //     }
+        // }
+    </script>
+</body>
+</html>
